@@ -26,6 +26,27 @@ function validate(f: Form): FE {
 
 const gradeColor = (v: number) => (v >= 8 ? "green" : v >= 5 ? "yellow" : "red") as "green" | "yellow" | "red";
 
+function exportCsv(grades: Grade[], sName: (id: number | null) => string, cName: (id: number | null) => string) {
+  const header = ["Student", "Course", "Grade", "Date"];
+  const rows = grades.map(g => [
+    sName(g.studentId),
+    cName(g.courseId),
+    String(g.value),
+    g.date,
+  ]);
+  const csv = [header, ...rows]
+    .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `grades_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Grades() {
   const [grades, setGrades]     = useState<Grade[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -100,7 +121,19 @@ export default function Grades() {
           <span className="text-sm text-zinc-400">{filtered.length}</span>
           {avg && <span className="text-sm text-zinc-400">· avg <span className="font-medium text-zinc-700">{avg}</span></span>}
         </div>
-        <Btn onClick={openAdd}>+ Add grade</Btn>
+        <div className="flex gap-2">
+          <Btn
+            variant="ghost"
+            onClick={() => exportCsv(filtered, sName, cName)}
+            disabled={filtered.length === 0}
+          >
+            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </Btn>
+          <Btn onClick={openAdd}>+ Add grade</Btn>
+        </div>
       </div>
 
       <SearchBar value={search} onChange={setSearch} placeholder="Search by student or course…" />
