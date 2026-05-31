@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Grade, Student, Course } from "../types";
 import * as api from "../api";
 import { ApiError } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { Badge, Btn, Empty, ErrorBar, Field, Input, Modal, SearchBar, Select, Spinner, Table, Td, Th, Tr, useConfirm } from "./ui";
 
 type Form = { value: string; studentId: string; courseId: string; date: string };
@@ -58,6 +59,7 @@ export default function Grades() {
   const [serverError, setServerError] = useState("");
   const [loading, setLoading]   = useState(true);
   const { confirm, dialog }     = useConfirm();
+  const { isTeacher }           = useAuth();
 
   const load = () => {
     setLoading(true);
@@ -122,17 +124,19 @@ export default function Grades() {
           {avg && <span className="text-sm text-zinc-400">· avg <span className="font-medium text-zinc-700">{avg}</span></span>}
         </div>
         <div className="flex gap-2">
-          <Btn
-            variant="ghost"
-            onClick={() => exportCsv(filtered, sName, cName)}
-            disabled={filtered.length === 0}
-          >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
-          </Btn>
-          <Btn onClick={openAdd}>+ Add grade</Btn>
+          {isTeacher && (
+            <Btn
+              variant="ghost"
+              onClick={() => exportCsv(filtered, sName, cName)}
+              disabled={filtered.length === 0}
+            >
+              <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export CSV
+            </Btn>
+          )}
+          {isTeacher && <Btn onClick={openAdd}>+ Add grade</Btn>}
         </div>
       </div>
 
@@ -151,10 +155,12 @@ export default function Grades() {
                   <Td><Badge text={String(g.value)} color={gradeColor(g.value)} /></Td>
                   <Td className="text-zinc-400">{g.date}</Td>
                   <Td className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Btn variant="ghost" size="sm" onClick={() => openEdit(g)}>Edit</Btn>
-                      <Btn variant="danger" size="sm" onClick={() => remove(g)}>Delete</Btn>
-                    </div>
+                    {isTeacher && (
+                      <div className="flex gap-2 justify-end">
+                        <Btn variant="ghost" size="sm" onClick={() => openEdit(g)}>Edit</Btn>
+                        <Btn variant="danger" size="sm" onClick={() => remove(g)}>Delete</Btn>
+                      </div>
+                    )}
                   </Td>
                 </Tr>
               ))

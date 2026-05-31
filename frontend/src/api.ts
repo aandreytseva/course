@@ -10,13 +10,21 @@ export class ApiError extends Error {
   }
 }
 
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem("edutrack_auth");
+    return raw ? JSON.parse(raw).token : null;
+  } catch { return null; }
+}
+
 async function req<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   let res: Response;
   try {
-    res = await fetch(BASE + url, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
+    res = await fetch(BASE + url, { headers, ...options });
   } catch {
     throw new ApiError(0, "Cannot connect to the server. Make sure the backend is running on port 8080.");
   }
@@ -30,33 +38,37 @@ async function req<T>(url: string, options?: RequestInit): Promise<T> {
     try {
       const body = JSON.parse(text);
       message = body.message ?? message;
-      fields = body.fields ?? {};
-    } catch { /* non-JSON error body */ }
+      fields  = body.fields ?? {};
+    } catch { /* non-JSON */ }
     throw new ApiError(res.status, message, fields);
   }
 
   return text ? JSON.parse(text) : (undefined as T);
 }
 
-// Students
-export const getStudents  = (group?: string) => req<import("./types").Student[]>("/students" + (group ? `?group=${group}` : ""));
-export const createStudent = (body: object)  => req<import("./types").Student>("/students", { method: "POST", body: JSON.stringify(body) });
-export const updateStudent = (id: number, body: object) => req<import("./types").Student>(`/students/${id}`, { method: "PUT", body: JSON.stringify(body) });
-export const deleteStudent = (id: number)    => req<void>(`/students/${id}`, { method: "DELETE" });
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export const login    = (body: object) => req<{ token: string; username: string; role: string }>("/auth/login",    { method: "POST", body: JSON.stringify(body) });
+export const register = (body: object) => req<{ token: string; username: string; role: string }>("/auth/register", { method: "POST", body: JSON.stringify(body) });
 
-// Courses
+// ─── Students ─────────────────────────────────────────────────────────────────
+export const getStudents   = (group?: string) => req<import("./types").Student[]>("/students" + (group ? `?group=${group}` : ""));
+export const createStudent = (body: object)   => req<import("./types").Student>("/students", { method: "POST", body: JSON.stringify(body) });
+export const updateStudent = (id: number, body: object) => req<import("./types").Student>(`/students/${id}`, { method: "PUT", body: JSON.stringify(body) });
+export const deleteStudent = (id: number)     => req<void>(`/students/${id}`, { method: "DELETE" });
+
+// ─── Courses ──────────────────────────────────────────────────────────────────
 export const getCourses   = ()               => req<import("./types").Course[]>("/courses");
 export const createCourse = (body: object)   => req<import("./types").Course>("/courses", { method: "POST", body: JSON.stringify(body) });
 export const updateCourse = (id: number, body: object) => req<import("./types").Course>(`/courses/${id}`, { method: "PUT", body: JSON.stringify(body) });
 export const deleteCourse = (id: number)     => req<void>(`/courses/${id}`, { method: "DELETE" });
 
-// Assignments
+// ─── Assignments ──────────────────────────────────────────────────────────────
 export const getAssignments   = ()             => req<import("./types").Assignment[]>("/assignments");
 export const createAssignment = (body: object) => req<import("./types").Assignment>("/assignments", { method: "POST", body: JSON.stringify(body) });
 export const updateAssignment = (id: number, body: object) => req<import("./types").Assignment>(`/assignments/${id}`, { method: "PUT", body: JSON.stringify(body) });
 export const deleteAssignment = (id: number)   => req<void>(`/assignments/${id}`, { method: "DELETE" });
 
-// Grades
+// ─── Grades ───────────────────────────────────────────────────────────────────
 export const getGrades   = ()             => req<import("./types").Grade[]>("/grades");
 export const createGrade = (body: object) => req<import("./types").Grade>("/grades", { method: "POST", body: JSON.stringify(body) });
 export const updateGrade = (id: number, body: object) => req<import("./types").Grade>(`/grades/${id}`, { method: "PUT", body: JSON.stringify(body) });

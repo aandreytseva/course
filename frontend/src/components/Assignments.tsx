@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Assignment, Course } from "../types";
 import * as api from "../api";
 import { ApiError } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { Badge, Btn, Empty, ErrorBar, Field, Input, Modal, PageHeader, SearchBar, Select, Spinner, Table, Td, Th, Tr, Textarea, useConfirm } from "./ui";
 
 type Form = { title: string; description: string; dueDate: string; courseId: string };
@@ -34,6 +35,7 @@ export default function Assignments() {
   const [serverError, setServerError] = useState("");
   const [loading, setLoading]         = useState(true);
   const { confirm, dialog }           = useConfirm();
+  const { isTeacher }                 = useAuth();
 
   const load = () => {
     setLoading(true);
@@ -89,7 +91,7 @@ export default function Assignments() {
   return (
     <div>
       {dialog}
-      <PageHeader title="Assignments" count={filtered.length} action={<Btn onClick={openAdd}>+ Add assignment</Btn>} />
+      <PageHeader title="Assignments" count={filtered.length} action={isTeacher ? <Btn onClick={openAdd}>+ Add assignment</Btn> : undefined} />
       <SearchBar value={search} onChange={setSearch} placeholder="Search assignments…" />
 
       {loading ? <Spinner /> : (
@@ -109,12 +111,14 @@ export default function Assignments() {
                       <Td className="text-zinc-500">{courseName(a.courseId)}</Td>
                       <Td className="text-zinc-500">{a.dueDate ?? "—"}</Td>
                       <Td><Badge text={text} color={color} /></Td>
-                      <Td className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Btn variant="ghost" size="sm" onClick={() => openEdit(a)}>Edit</Btn>
-                          <Btn variant="danger" size="sm" onClick={() => remove(a)}>Delete</Btn>
-                        </div>
-                      </Td>
+                      {isTeacher && (
+                        <Td className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Btn variant="ghost" size="sm" onClick={() => openEdit(a)}>Edit</Btn>
+                            <Btn variant="danger" size="sm" onClick={() => remove(a)}>Delete</Btn>
+                          </div>
+                        </Td>
+                      )}
                     </Tr>
                   );
                 })
