@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Grade, Student, Course } from "../types";
+import { Grade, Student, Course, Assignment } from "../types";
 import * as api from "../api";
 import { ApiError } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -48,23 +48,159 @@ function exportCsv(grades: Grade[], sName: (id: number | null) => string, cName:
   URL.revokeObjectURL(url);
 }
 
+interface StudentPanelProps {
+  student: Student;
+  grades: Grade[];
+  courses: Course[];
+  assignments: Assignment[];
+  onClose: () => void;
+}
+
+function daysLeft(dueDate: string | null): string {
+  if (!dueDate) return "";
+  const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
+  if (diff < 0)  return "Overdue";
+  if (diff === 0) return "Today";
+  return `${diff}d left`;
+}
+
+function daysColor(dueDate: string | null): string {
+  if (!dueDate) return "text-zinc-400";
+  const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
+  if (diff < 0)  return "text-red-500";
+  if (diff <= 7) return "text-yellow-600";
+  return "text-green-600";
+}
+
+function StudentPanel({ student, grades, courses, assignments, onClose }: StudentPanelProps) {
+  const studentGrades = grades.filter(g => g.studentId === student.id);
+  const courseIds = [...new Set(studentGrades.map(g => g.courseId).filter(Boolean))] as number[];
+
+  return (
+    <>
+      {/* backdrop */}
+      <div
+        className="fixed inset-0 bg-black/20 z-30"
+        onClick={onClose}
+      />
+      {/* panel */}
+      <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-40 flex flex-col overflow-hidden">
+        {/* header */}
+        <div className="px-6 py-5 border-b border-zinc-100 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold text-zinc-900">
+              {student.firstName} {student.lastName}
+            </div>
+            <div className="text-sm text-zinc-500 mt-0.5">{student.groupName}</div>
+            <div className="text-xs text-zinc-400 mt-0.5">{student.email}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-zinc-400 hover:text-zinc-600 mt-0.5 shrink-0"
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* summary row */}
+        <div className="px-6 py-3 bg-zinc-50 border-b border-zinc-100 flex gap-6 text-sm">
+          <div>
+            <span className="text-zinc-400">Grades</span>
+            <span className="ml-2 font-semibold text-zinc-800">{studentGrades.length}</span>
+          </div>
+          <div>
+            <span className="text-zinc-400">Avg</span>
+            <span className="ml-2 font-semibold text-zinc-800">
+              {studentGrades.length
+                ? (studentGrades.reduce((s, g) => s + g.value, 0) / studentGrades.length).toFixed(1)
+                : "—"}
+            </span>
+          </div>
+          <div>
+            <span className="text-zinc-400">Courses</span>
+            <span className="ml-2 font-semibold text-zinc-800">{courseIds.length}</span>
+          </div>
+        </div>
+
+        {/* content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+          {courseIds.length === 0 && (
+            <p className="text-sm text-zinc-400 text-center mt-8">No grades recorded.</p>
+          )}
+          {courseIds.map(cid => {
+            const course = courses.find(c => c.id === cid);
+            const grade  = studentGrades.find(g => g.courseId === cid);
+            const courseAssignments = assignments.filter(a => a.courseId === cid);
+            return (
+              <div key={cid} className="rounded-xl border border-zinc-100 overflow-hidden">
+                {/* course header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-zinc-50">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-800">{course?.name ?? "—"}</div>
+                    {course?.teacher && (
+                      <div className="text-xs text-zinc-400 mt-0.5">{course.teacher}</div>
+                    )}
+                  </div>
+                  {grade && (
+                    <Badge text={`${grade.value}/10`} color={gradeColor(grade.value)} />
+                  )}
+                </div>
+
+                {/* assignments */}
+                {courseAssignments.length === 0 ? (
+                  <div className="px-4 py-2 text-xs text-zinc-400">No assignments for this course.</div>
+                ) : (
+                  <ul className="divide-y divide-zinc-50">
+                    {courseAssignments.map(a => (
+                      <li key={a.id} className="flex items-center justify-between px-4 py-2.5 gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm text-zinc-700 truncate">{a.title}</div>
+                          {a.description && (
+                            <div className="text-xs text-zinc-400 truncate">{a.description}</div>
+                          )}
+                        </div>
+                        {a.dueDate && (
+                          <div className="text-right shrink-0">
+                            <div className="text-xs text-zinc-400">{a.dueDate}</div>
+                            <div className={`text-xs font-medium ${daysColor(a.dueDate)}`}>
+                              {daysLeft(a.dueDate)}
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Grades() {
-  const [grades, setGrades]     = useState<Grade[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [courses, setCourses]   = useState<Course[]>([]);
-  const [search, setSearch]     = useState("");
-  const [modal, setModal]       = useState<null | "add" | Grade>(null);
-  const [form, setForm]         = useState<Form>(blank);
-  const [fe, setFe]             = useState<FE>({});
+  const [grades, setGrades]           = useState<Grade[]>([]);
+  const [students, setStudents]       = useState<Student[]>([]);
+  const [courses, setCourses]         = useState<Course[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [search, setSearch]           = useState("");
+  const [modal, setModal]             = useState<null | "add" | Grade>(null);
+  const [form, setForm]               = useState<Form>(blank);
+  const [fe, setFe]                   = useState<FE>({});
   const [serverError, setServerError] = useState("");
-  const [loading, setLoading]   = useState(true);
-  const { confirm, dialog }     = useConfirm();
-  const { isTeacher }           = useAuth();
+  const [loading, setLoading]         = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const { confirm, dialog }           = useConfirm();
+  const { isTeacher }                 = useAuth();
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.getGrades(), api.getStudents(), api.getCourses()])
-      .then(([g, s, c]) => { setGrades(g); setStudents(s); setCourses(c); })
+    Promise.all([api.getGrades(), api.getStudents(), api.getCourses(), api.getAssignments()])
+      .then(([g, s, c, a]) => { setGrades(g); setStudents(s); setCourses(c); setAssignments(a); })
       .catch((e: ApiError) => setServerError(e.message))
       .finally(() => setLoading(false));
   };
@@ -87,6 +223,12 @@ export default function Grades() {
   const openEdit = (g: Grade) => {
     setForm({ value: String(g.value), studentId: String(g.studentId ?? ""), courseId: String(g.courseId ?? ""), date: g.date });
     setFe({}); setServerError(""); setModal(g);
+  };
+
+  const openStudentPanel = (studentId: number | null) => {
+    if (!studentId) return;
+    const s = students.find(x => x.id === studentId);
+    if (s) setSelectedStudent(s);
   };
 
   const save = async () => {
@@ -117,6 +259,17 @@ export default function Grades() {
   return (
     <div>
       {dialog}
+
+      {selectedStudent && (
+        <StudentPanel
+          student={selectedStudent}
+          grades={grades}
+          courses={courses}
+          assignments={assignments}
+          onClose={() => setSelectedStudent(null)}
+        />
+      )}
+
       <div className="flex items-baseline justify-between mb-6">
         <div className="flex items-baseline gap-3">
           <h1 className="text-xl font-semibold text-zinc-900">Grades</h1>
@@ -150,7 +303,14 @@ export default function Grades() {
               ? <tr><td colSpan={5}><Empty label="No grades yet." /></td></tr>
               : filtered.map(g => (
                 <Tr key={g.id}>
-                  <Td><span className="font-medium">{sName(g.studentId)}</span></Td>
+                  <Td>
+                    <button
+                      className="font-medium text-left hover:text-blue-600 hover:underline underline-offset-2 transition-colors"
+                      onClick={() => openStudentPanel(g.studentId)}
+                    >
+                      {sName(g.studentId)}
+                    </button>
+                  </Td>
                   <Td className="text-zinc-500">{cName(g.courseId)}</Td>
                   <Td><Badge text={String(g.value)} color={gradeColor(g.value)} /></Td>
                   <Td className="text-zinc-400">{g.date}</Td>

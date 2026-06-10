@@ -1,0 +1,13 @@
+UPDATE assignments SET title = 'Lab #1 - Sorting'         WHERE title LIKE 'Lab #1%Sorting';
+UPDATE assignments SET title = 'Lab #2 - Graphs'          WHERE title LIKE 'Lab #2%Graphs';
+UPDATE assignments SET title = 'Lab #2 - Spring Security' WHERE title LIKE 'Lab #2%Spring Security';
+UPDATE assignments SET title = 'Lab #3 - Exception Handler' WHERE title LIKE 'Lab #3%Exception Handler';
+UPDATE assignments SET title = 'Lab #2 - Normalization'   WHERE title LIKE 'Lab #2%Normalization';
+UPDATE assignments SET title = 'Lab #3 - Indexes'         WHERE title LIKE 'Lab #3%Index';
+UPDATE assignments SET title = 'Lab #4 - Transactions'    WHERE title LIKE 'Lab #4%Transaction';
+UPDATE assignments SET title = 'Lab #1 - Processes'       WHERE title LIKE 'Lab #1%Process';
+UPDATE assignments SET title = 'Lab #2 - Threads'         WHERE title LIKE 'Lab #2%Thread';
+UPDATE assignments SET title = 'Lab #3 - Memory'          WHERE title LIKE 'Lab #3%Memory';
+UPDATE assignments SET title = 'Lab #1 - UML Diagrams'    WHERE title LIKE 'Lab #1%UML';
+UPDATE assignments SET title = 'Lab #2 - Design Patterns' WHERE title LIKE 'Lab #2%Design';
+UPDATE assignments SET title = 'Lab #3 - Dynamic Prog.'   WHERE title LIKE 'Lab #3%Dynamic';
